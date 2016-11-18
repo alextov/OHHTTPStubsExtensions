@@ -7,11 +7,11 @@ import UIKit
 import OHHTTPStubs
 
 extension OHHTTPStubs {
-    class func stubURLThatMatchesPattern(regexPattern: String, jsonFileName: String, statusCode: Int, HTTPMethod: String, bundle: NSBundle) -> AnyObject? {
-        guard let path = bundle.pathForResource(jsonFileName, ofType: "json") else { return nil }
+    class func stubURLThatMatchesPattern(_ regexPattern: String, jsonFileName: String, statusCode: Int, HTTPMethod: String, bundle: Bundle) -> AnyObject? {
+        guard let path = bundle.path(forResource: jsonFileName, ofType: "json") else { return nil }
        
         do {
-            let responseString = try String(contentsOfFile: path, encoding: NSUTF8StringEncoding)
+            let responseString = try String(contentsOfFile: path, encoding: String.Encoding.utf8)
             return self._stubURLThatMatchesPattern(regexPattern, responseString: responseString, statusCode: statusCode, HTTPMethod: HTTPMethod)
         } catch {
             print("Parse error \(error)")
@@ -19,7 +19,7 @@ extension OHHTTPStubs {
         }
     }
 
-    class func _stubURLThatMatchesPattern(regexPattern: String, responseString: String, statusCode: Int, HTTPMethod: String) -> AnyObject? {
+    class func _stubURLThatMatchesPattern(_ regexPattern: String, responseString: String, statusCode: Int, HTTPMethod: String) -> AnyObject? {
         var regex: NSRegularExpression
         do {
             regex = try NSRegularExpression(pattern: regexPattern, options: [])
@@ -28,28 +28,28 @@ extension OHHTTPStubs {
             return nil
         }
         
-        return OHHTTPStubs.stubRequestsPassingTest({ request in
+        return OHHTTPStubs.stubRequests(passingTest: { request in
 
-            if request.HTTPMethod != HTTPMethod {
+            if request.httpMethod != HTTPMethod {
                 return false
             }
 
-            let requestURLString = request.URL?.absoluteString
-            if regex.firstMatchInString(requestURLString!, options: [], range: NSMakeRange(0, requestURLString!.characters.count)) != nil {
+            let requestURLString = request.url?.absoluteString
+            if regex.firstMatch(in: requestURLString!, options: [], range: NSMakeRange(0, requestURLString!.characters.count)) != nil {
                 return true
             }
 
             return false
         }) { (request) -> OHHTTPStubsResponse in
 
-            guard let response = responseString.dataUsingEncoding(NSUTF8StringEncoding) else { return OHHTTPStubsResponse() }
+            guard let response = responseString.data(using: String.Encoding.utf8) else { return OHHTTPStubsResponse() }
 
             let headers = [ "Content-Type": "application/json; charset=utf-8" ]
 
             let statusCode = Int32(statusCode)
 
             if statusCode == 422 || statusCode == 500 {
-                let error = NSError(domain: NSURLErrorDomain, code: Int(CFNetworkErrors.CFURLErrorCannotLoadFromNetwork.rawValue), userInfo: nil)
+                let error = NSError(domain: NSURLErrorDomain, code: Int(CFNetworkErrors.cfurlErrorCannotLoadFromNetwork.rawValue), userInfo: nil)
                 return OHHTTPStubsResponse(error: error)
             }
 

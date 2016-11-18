@@ -12,79 +12,68 @@ let InlineResponse = "inline_response"
 
 import OHHTTPStubs
 
-@objc public class HTTPStubber: NSObject {
-    public class func removeAllStubs() {
+@objc open class HTTPStubber: NSObject {
+    open class func removeAllStubs() {
         OHHTTPStubs.removeAllStubs()
     }
 
-    public class func applyStubsInBundleWithName(bundleName: String) {
-        guard let bundle = retrieveBundle(bundleName: bundleName) else { return }
-        guard let mappings = retrieveMappingsForBundle(bundle: bundle) else { return }
+    open class func applyStubsInBundleWithName(_ bundleName: String) {
+        guard let bundle = retrieveBundle(withName: bundleName) else { return }
+        guard let mappings = retrieveMappings(for: bundle) else { return }
 
-        for (index, stubInfo) in mappings.enumerate() {
-            if let stubInfo = stubInfo as? NSDictionary {
-                stub(stubInfo, bundle: bundle)
-            }
+        for stubInfo in mappings {
+            stub(info: stubInfo, bundle: bundle)
         }
     }
 
-    public class func applySingleStubInBundleWithName(bundle bundleName: String, resource: String) {
-        guard let bundle = retrieveBundle(bundleName: bundleName) else { return }
-        guard let mappings = retrieveMappingsForBundle(bundle: bundle) else { return }
+    open class func applySingleStubInBundleWithName(bundle bundleName: String, resource: String) {
+        guard let bundle = retrieveBundle(withName: bundleName) else { return }
+        guard let mappings = retrieveMappings(for: bundle) else { return }
 
-        if let stubInfo = mappings.filter({ (element) -> Bool in
-            if let element = element as? NSDictionary {
-                return element[JSONFile] as! String == resource
-            } else {
-                return false
-            }
-        }).first {
-            stub(stubInfo, bundle: bundle)
+        if let stubInfo = mappings.lazy.filter({ $0[JSONFile] as? String == resource }).first {
+            stub(info: stubInfo, bundle: bundle)
         }
     }
 
-    class func stub(stubInfo: NSDictionary, bundle: NSBundle) {
-        let matchingURL = stubInfo[MatchingURL] as! String
-        let jsonFile = stubInfo[JSONFile] as! String
-        let statusCodeString = stubInfo[StatusCode] as! String
+    class func stub(info: NSDictionary, bundle: Bundle) {
+        let matchingURL = info[MatchingURL] as! String
+        let jsonFile = info[JSONFile] as! String
+        let statusCodeString = info[StatusCode] as! String
         let statusCode = Int(statusCodeString)!
-        let httpMethod = stubInfo[HTTPMethod] as! String
-        OHHTTPStubs.stubURLThatMatchesPattern(matchingURL, jsonFileName: jsonFile, statusCode: statusCode, HTTPMethod: httpMethod, bundle: bundle)
+        let httpMethod = info[HTTPMethod] as! String
+        _ = OHHTTPStubs.stubURLThatMatchesPattern(matchingURL, jsonFileName: jsonFile, statusCode: statusCode, HTTPMethod: httpMethod, bundle: bundle)
     }
 
-    class func retrieveBundle(bundleName bundleName: String) -> NSBundle? {
-        let bundlePath = NSBundle.mainBundle().pathForResource(bundleName, ofType: "bundle")!
-        let bundle = NSBundle(path: bundlePath)
+    class func retrieveBundle(withName bundleName: String) -> Bundle? {
+        let bundlePath = Bundle.main.path(forResource: bundleName, ofType: "bundle")!
+        let bundle = Bundle(path: bundlePath)
         return bundle
     }
 
-    class func retrieveMappingsForBundle(bundle bundle: NSBundle) -> [NSDictionary]? {
-        let mappingFilePath = bundle.pathForResource(MappingFilename, ofType: "plist")
-        let mapping = NSArray(contentsOfFile: mappingFilePath!) as! [NSDictionary]
+    class func retrieveMappings(for bundle: Bundle) -> [NSDictionary]? {
+        let mappingFilePath = bundle.path(forResource: MappingFilename, ofType: "plist")
+        let mapping = NSArray(contentsOfFile: mappingFilePath!) as? [NSDictionary]
         return mapping
     }
 
-    public class func retrieveDataFromBundleWithName(bundle bundleName: String, resource: String) -> NSData? {
-        let bundle = NSBundle.mainBundle()
+    open class func retrieveData(fromBundleWithName bundleName: String, resource: String) -> Data? {
+        let bundle = Bundle.main
 
-        guard let bundlePath = bundle.pathForResource(bundleName, ofType: "bundle") else { return nil }
-        guard let jsonBundle = NSBundle(path: bundlePath) else { return nil }
-        guard let path = jsonBundle.pathForResource(resource, ofType: "json") else { return nil }
+        guard let bundlePath = bundle.path(forResource: bundleName, ofType: "bundle") else { return nil }
+        guard let jsonBundle = Bundle(path: bundlePath) else { return nil }
+        guard let path = jsonBundle.path(forResource: resource, ofType: "json") else { return nil }
 
-        return NSData(contentsOfFile: path)
+        return (try? Data(contentsOf: URL(fileURLWithPath: path)))
     }
 
-    public class func stubAPICallsIfNeeded() {
-        if isRunningAutomationTests() {
+    open class func stubAPICallsIfNeeded() {
+        if isRunningAutomationTests {
             stubAPICalls()
         }
     }
 
-    public class func isRunningAutomationTests() -> Bool {
-        if NSProcessInfo.processInfo().arguments.contains("RUNNING_AUTOMATION_TESTS") {
-            return true
-        }
-        return false
+    open class var isRunningAutomationTests: Bool {
+        return ProcessInfo.processInfo.arguments.contains("RUNNING_AUTOMATION_TESTS")
     }
 
     class func stubAPICalls() {
@@ -92,13 +81,13 @@ import OHHTTPStubs
         // we globally stub the app using the 'stubsTemplate_addresses.bundle'
         let stubPrefix = "STUB_API_CALLS_"
 
-        let stubPrefixForPredicate = stubPrefix.stringByAppendingString("*");
+        let stubPrefixForPredicate = stubPrefix + "*";
 
         let predicate = NSPredicate(format: "SELF like %@", stubPrefixForPredicate)
 
-        let filteredArray = NSProcessInfo.processInfo().arguments.filter { predicate.evaluateWithObject($0) }
+        let filteredArray = ProcessInfo.processInfo.arguments.filter { predicate.evaluate(with: $0) }
 
-        let bundleName = filteredArray.first?.stringByReplacingOccurrencesOfString(stubPrefix, withString: "")
+        let bundleName = filteredArray.first?.replacingOccurrences(of: stubPrefix, with: "")
 
         if let bundleName = bundleName {
             HTTPStubber.applyStubsInBundleWithName(bundleName)

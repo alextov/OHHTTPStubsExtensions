@@ -23,7 +23,7 @@ Pod::Spec.new do |s|
   s.homepage         = "https://github.com/michaelhayman/OHHTTPStubsExtensions"
   s.license          = 'MIT'
   s.author           = { "Michael Hayman" => "michael@springbox.ca" }
-  s.source           = { :git => "https://github.com/michaelhayman/OHHTTPStubsExtensions.git", :tag => s.version.to_s }
+  s.source           = { :git => "https://github.com/alextov/OHHTTPStubsExtensions.git", :tag => s.version.to_s }
 
   s.ios.deployment_target = '8.0'
 
